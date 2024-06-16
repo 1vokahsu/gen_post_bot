@@ -20,6 +20,7 @@ class Users(Base):
     type_post: Mapped[Optional[str]]
     idea: Mapped[Optional[str]]
     history: Mapped[Optional[str]] = mapped_column(sa.Text)
+    has_active = Mapped[Optional[bool]]
     created_date: Mapped[datetime.datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.sql.func.now()
     )

@@ -1,16 +1,10 @@
-import regex
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup
-from aiogram.filters import CommandStart, StateFilter
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, ChatMemberUpdated
+from aiogram.filters import CommandStart, StateFilter, ChatMemberUpdatedFilter, KICKED, MEMBER
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from keyboards import kb
 from database.queries import AsyncORM
-# \, LabeledPrice, PreCheckoutQuery
-# from aiogram.enums import ChatMemberStatus
-# from aiogram.types.message import ContentType
-# from aiogram.utils.keyboard import InlineKeyboardBuilder
-# from config.config import config
 
 router: Router = Router()
 
@@ -419,6 +413,16 @@ async def process_idea_offer(callback: CallbackQuery):
         text='Огонь, правда?\n\n'
              f'...\n\n'
     )
+
+
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
+async def user_blocked_bot(event: ChatMemberUpdated):
+    await AsyncORM.add_flag_active(event.from_user.id, False)
+
+
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
+async def user_unblocked_bot(event: ChatMemberUpdated):
+    await AsyncORM.add_flag_active(event.from_user.id, True)
 
 
 # @router.callback_query(kb.PaymentCallbackFactory.filter(F.choice == "payment"))
