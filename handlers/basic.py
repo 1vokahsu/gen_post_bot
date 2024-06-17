@@ -1,4 +1,6 @@
-from aiogram import F, Router
+import random
+
+from aiogram import F, Router, Bot
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, ChatMemberUpdated
 from aiogram.filters import CommandStart, StateFilter, ChatMemberUpdatedFilter, KICKED, MEMBER
 from aiogram.fsm.state import State, StatesGroup
@@ -177,18 +179,19 @@ async def process_no_product(message: Message):
 '''
 @router.message(StateFilter(FSMFillForm.upload_posts), lambda x: x.text or x.voice)
 async def process_posts(message: Message,
-                        state: FSMContext):
+                        state: FSMContext, bot: Bot):
     print(f'[INFO] state target check POSTS')
     user_id = message.from_user.id
     posts = message.text
     print(f'[INFO] posts {posts} from {user_id}')
     await AsyncORM.add_post(user_id, posts)
     print(f'[INFO] write data to db')
+    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.continue_btn]]
     )
     await message.answer(
-        text='Пришли еще или нажми (инлайн) кнопку “продолжить”',
+        text='Пришли еще или нажми “продолжить”',
         reply_markup=kb_
     )
     await state.set_state(FSMFillForm.upload_posts)
@@ -219,33 +222,41 @@ async def process_skip(callback: CallbackQuery, state: FSMContext):
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.seller_btn], [kb.engaging_btn]]
     )
-    await callback.message.answer(
+
+    await callback.message.edit_text(
         text='Теперь давай начнем наполнять твой блог?\n\n'
              'Напиши мне какой пост ты хотел бы написать:\n'
-             '\t1. <b>Продающий</b> - пост, после которого, твои читатели будут кидать деньги в экран и писать тебе в '
+             '\t1. <b>Продающий</b> - пост, после которого, твои читатели будут кидать деньги в экран и писать '
+             'тебе в'
              'личку, чтобы не упустить шанс купить твой продукт.\n'
-             '\t2. <b>Вовлекающий</b> - твои читатели будут плакать и смеяться у своих экранов, их сердца будут рекой '
+             '\t2. <b>Вовлекающий</b> - твои читатели будут плакать и смеяться у своих экранов, их сердца будут '
+             'рекой'
              'сыпаться в виде лайков, а критики назовут твой пост самым ярким событием в этом году.',
         reply_markup=kb_
     )
+    await callback.answer()
 
 
 @router.callback_query(F.data.in_(['seller', 'engaging']))
 async def process_skip(callback: CallbackQuery):
     user_id = callback.from_user.id
     print(f"[INFO] Юзер {user_id} нажал на кнопку \"Продающий\" или \"Вовлекающий\"")
-    type_post = callback.data
+    if callback.data == 'seller':
+        type_post = 'Продающий'
+    else:
+        type_post = 'Вовлекающий'
     print(f"[INFO] write {type_post} to db")
     await AsyncORM.add_type_post(user_id, type_post)
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.say_btn], [kb.offer_btn]]
     )
-    await callback.message.answer(
+    await callback.message.edit_text(
         text='Окей, у тебя уже есть задумка по теме этого поста?\n'
              'Опиши или надиктуй мне её.\n\n'
              'Если нет - то ничего страшного, давай я сам подберу подходящую и задам тебе несколько вопросов.\n',
         reply_markup=kb_
     )
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'say')
@@ -254,13 +265,16 @@ async def process_idea_yes(callback: CallbackQuery, state: FSMContext):
     print(f"[INFO] Юзер {user_id} нажал на кнопку “Мне есть что сказать”")
     print(f"[INFO] set state upload idea")
     await state.set_state(FSMFillForm.upload_idea)
-    await callback.message.answer(
-        text='Супер, опиши или надиктуй мне свою идею.\n\n'
-             '____\n'
-             '<i>Ты также можешь использовать голосовые сообщения для ответа :)</i>'
-
-    )
-
+    if callback.message.text != 'Окей, у тебя уже есть задумка по теме этого поста?\n' \
+                                'Опиши или надиктуй мне её.\n\n' \
+                                'Если нет - то ничего страшного, давай я сам подберу подходящую и задам тебе ' \
+                                'несколько вопросов.\n':
+        await callback.message.edit_text(
+            text='Супер, опиши или надиктуй мне свою идею.\n\n'
+                 '____\n'
+                 '<i>Ты также можешь использовать голосовые сообщения для ответа :)</i>'
+        )
+    await callback.answer()
 
 '''
 хэндлер обработки состояния идеи постов пользователя
@@ -284,7 +298,7 @@ async def process_idea(message: Message,
     await message.answer(
         text='Смотри, вот такой пост нам точно подойдет:\n\n'
              f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n'
-             f'\t2. Цель нашего поста: ...\n'
+             f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n'
              f'\t3. Какие приемы будем использовать: ...\n'
              f'\t\ta. ...\n'
              f'\t\tb. ...\n'
@@ -329,37 +343,40 @@ async def process_idea_offer(callback: CallbackQuery):
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.agree_btn], [kb.disagree_btn]]
     )
-    await callback.message.answer(
-        text='Смотри, вот такой пост нам точно подойдет:\n\n'
-             f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n'
-             f'\t2. Цель нашего поста: ...\n'
-             f'\t3. Какие приемы будем использовать: ...\n'
-             f'\t\ta. ...\n'
-             f'\t\tb. ...\n'
-             f'\t\tc. ...\n'
-             f'\t4. Чем разбавим текст: ...\n'
-             f'\t5. Какие триггеры будем использовать: ...\n'
-             f'\t6. Каким призывом закроем пост: ...\n\n'
-             'Если ты согласен - то просто ответь на следующий вопрос:\n'
-             '\t - Смотри, для создания текста мне понадобиться какая-то твоя личная история, расскажи о том, '
-             'о какой-нибудь интересной истории, которая приключилась с тобой в последнее время (можно буквально в 3х '
-             'предложениях).\n\n'
-             'Если не согласен со структурой - то просто скажи что тебе не понравилось и я переделаю)\n\n'
-             '____\n'
-             '<i>Напоминаю, ты можешь использовать голосовые сообщения для ответа :)</i>\n\n',
-        reply_markup=kb_
-    )
+    if not callback.message.text.startswith('Смотри, вот') or not callback.message.text.startswith('Окей, у тебя'):
+        await callback.message.edit_text(
+            text='Смотри, вот такой пост нам точно подойдет:\n\n'
+                 f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n'
+                 f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n'
+                 f'\t3. Какие приемы будем использовать: ...\n'
+                 f'\t\ta. {random.randint(0, 10)}\n'
+                 f'\t\tb. {random.randint(0, 10)}\n'
+                 f'\t\tc. {random.randint(0, 10)}\n'
+                 f'\t4. Чем разбавим текст: ...\n'
+                 f'\t5. Какие триггеры будем использовать: ...\n'
+                 f'\t6. Каким призывом закроем пост: ...\n\n'
+                 'Если ты согласен - то просто ответь на следующий вопрос:\n'
+                 '\t - Смотри, для создания текста мне понадобиться какая-то твоя личная история, расскажи о том, '
+                 'о какой-нибудь интересной истории, которая приключилась с тобой в последнее время (можно буквально в 3х '
+                 'предложениях).\n\n'
+                 'Если не согласен со структурой - то просто скажи что тебе не понравилось и я переделаю)\n\n'
+                 '____\n'
+                 '<i>Напоминаю, ты можешь использовать голосовые сообщения для ответа :)</i>\n\n',
+            reply_markup=kb_
+        )
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'agree')
 async def process_idea_offer(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     print(f"[INFO] Юзер {user_id} нажал на кнопку “Согласен”")
-    await callback.message.answer(
+    await callback.message.edit_text(
         text='Супер!\nВнимательно слушаю вашу историю\n\n'
              '____\n'
              '<i>Напоминаю, ты можешь использовать голосовые сообщения для ответа :)</i>\n\n'
     )
+    await callback.answer()
     await state.set_state(FSMFillForm.upload_history)
 
 
@@ -409,10 +426,11 @@ async def process_idea_offer(callback: CallbackQuery):
     rate = callback.data
     await AsyncORM.add_rate(user_id, rate)
     print(f"[INFO] write rate {rate} to db")
-    await callback.message.answer(
+    await callback.message.edit_text(
         text='Огонь, правда?\n\n'
              f'...\n\n'
     )
+    await callback.answer()
 
 
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
