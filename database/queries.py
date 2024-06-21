@@ -1,7 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy import select
 from database.database import async_engine, Base, async_session_factory
-from database.models import Users, UsersPosts, GenPosts
+from database.models import Users, UsersPosts, GenPosts, Criteria, CriteriaData
 
 
 class AsyncORM:
@@ -161,3 +161,29 @@ class AsyncORM:
                 # print('adf', check)
                 check = check.all()
                 return check[0][0]
+
+    @staticmethod
+    async def add_criteria(criteria: str):
+        async with async_session_factory() as session:
+            exist_query = Criteria(criteria=criteria)
+            session.add(exist_query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def add_criteria_data(criteria_id: int, criteria_data: str):
+        async with async_session_factory() as session:
+            exist_query = CriteriaData(criteria_data=criteria_data, criteria_id=criteria_id)
+            session.add(exist_query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def get_criteria_data(criteria_id: int, criteria_data_number: int) -> list:
+        async with async_session_factory() as session:
+            query = (
+                select(CriteriaData.criteria_data).select_from(CriteriaData).filter_by(criteria_id=criteria_id)
+            )
+            criteria_data = await session.execute(query)
+            criteria_data = criteria_data.all()[criteria_data_number-1][0]
+            return criteria_data

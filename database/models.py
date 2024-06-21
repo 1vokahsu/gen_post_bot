@@ -8,7 +8,6 @@ intpk = Annotated[int, mapped_column(primary_key=True)]
 
 
 class Users(Base):
-
     __tablename__ = "users"
 
     id: Mapped[intpk]
@@ -29,7 +28,6 @@ class Users(Base):
 
 
 class UsersPosts(Base):
-
     __tablename__ = "users_data"
 
     id: Mapped[intpk]
@@ -42,7 +40,6 @@ class UsersPosts(Base):
 
 
 class GenPosts(Base):
-
     __tablename__ = "gen_posts"
 
     id: Mapped[intpk]
@@ -53,3 +50,20 @@ class GenPosts(Base):
         sa.DateTime(timezone=True), server_default=sa.sql.func.now()
     )
     category_rels: Mapped['Users'] = relationship(back_populates='user_data_rels')
+
+
+class Criteria(Base):
+    __tablename__ = "criteria"
+
+    id: Mapped[intpk]
+    criteria: Mapped[Optional[str]]
+    criteria_rel: Mapped['CriteriaData'] = relationship(back_populates='criteria_rel')
+
+
+class CriteriaData(Base):
+    __tablename__ = "criteria_data"
+
+    id: Mapped[intpk]
+    criteria_data: Mapped[Optional[str]]
+    criteria_id: Mapped[Optional[int]] = mapped_column(sa.ForeignKey('criteria.id'))
+    criteria_rel: Mapped['Criteria'] = relationship(back_populates='criteria_rel')
