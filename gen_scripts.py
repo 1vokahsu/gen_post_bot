@@ -30,17 +30,18 @@ async def add_criteria_data(file_criteria: str, file_criteria_data: str) -> None
 # функция генерации предложения
 async def gen_sentence() -> str:
     sentence = ''
-    for i in range(1, 36):
+    for i in range(1, 6):
         sentence += await AsyncORM.get_criteria_data(i, random.randint(1, 10)) + ' '
 
     return sentence
 
 
 async def main():
-    # await AsyncORM.create_tables()
-    # await add_criteria_data(file_criteria='data/criteria.csv', file_criteria_data='')
+    await AsyncORM.create_tables()
+    await add_criteria_data(file_criteria='data/criteria.csv', file_criteria_data='')
     # print(await AsyncORM.get_criteria_data(1, 5))
-    print(await gen_sentence())
+    # user_data = await AsyncORM.get_user_data(701275421)
+    # print(user_data)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -23,6 +23,8 @@ class FSMFillForm(StatesGroup):
 '''
 хэндлер обработки /start
 '''
+
+
 @router.message(CommandStart())
 async def process_start_command(message: Message, state: FSMContext):
     print(f"[INFO] Юзер {message.from_user.id} нажал /start ")
@@ -47,6 +49,8 @@ async def process_start_command(message: Message, state: FSMContext):
 хэндлер обработки состояния для обработки темы поста
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_topic), lambda x: x.text or x.voice)
 async def process_topic(message: Message,
                         state: FSMContext
@@ -73,6 +77,8 @@ async def process_topic(message: Message,
 '''
 хэндлер ловит невалидные сообщения темы поста
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_topic))
 async def process_no_topic(message: Message):
     print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных TOPIC")
@@ -90,6 +96,8 @@ async def process_no_topic(message: Message):
 хэндлер обработки состояния для обработки целевой аудитории
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_target), lambda x: x.text or x.voice)
 async def process_target(message: Message,
                          state: FSMContext
@@ -116,6 +124,8 @@ async def process_target(message: Message,
 '''
 хэндлер невалидные сообщения целевой аудитории
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_target))
 async def process_no_target(message: Message):
     print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных TARGET")
@@ -133,6 +143,8 @@ async def process_no_target(message: Message):
 хэндлер обработки состояния для обработки наличия продукта у пользователя
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_product), lambda x: x.text or x.voice)
 async def process_product(message: Message,
                           state: FSMContext):
@@ -157,6 +169,8 @@ async def process_product(message: Message,
 '''
 хэндлер ловит невалидные сообщения про наличие продукта у пользователя
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_product))
 async def process_no_product(message: Message):
     print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных PRODUCT")
@@ -177,6 +191,8 @@ async def process_no_product(message: Message):
 хэндлер обработки состояния наличия предыдущих постов у пользователя
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_posts), lambda x: x.text or x.voice)
 async def process_posts(message: Message,
                         state: FSMContext, bot: Bot):
@@ -200,6 +216,8 @@ async def process_posts(message: Message,
 '''
 хэндлер ловит невалидные сообщения про наличие постов у пользователя
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_posts))
 async def process_no_posts(message: Message):
     print(f"Ловим юзера {message.from_user.id} на невалидных данных POSTS")
@@ -276,10 +294,13 @@ async def process_idea_yes(callback: CallbackQuery, state: FSMContext):
         )
     await callback.answer()
 
+
 '''
 хэндлер обработки состояния идеи постов пользователя
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_idea), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
                        state: FSMContext):
@@ -295,20 +316,23 @@ async def process_idea(message: Message,
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.agree_btn], [kb.disagree_btn]]
     )
+    structure = f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n' \
+                f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n' \
+                f'\t3. Какие приемы будем использовать:\n' \
+                f'\t\ta. {await gen.gen_sentence()}\n' \
+                f'\t\tb. {await gen.gen_sentence()}\n' \
+                f'\t\tc. {await gen.gen_sentence()}\n' \
+                f'\t4. Чем разбавим текст: {await gen.gen_sentence()}\n' \
+                f'\t5. Какие триггеры будем использовать: {await gen.gen_sentence()}\n' \
+                f'\t6. Каким призывом закроем пост: {await gen.gen_sentence()}\n\n'
+    await AsyncORM.add_structure(user_id=user_id, structure=structure)
     await message.answer(
         text='Смотри, вот такой пост нам точно подойдет:\n\n'
-             f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n'
-             f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n'
-             f'\t3. Какие приемы будем использовать:\n'
-             f'\t\ta. {await gen.gen_sentence()}\n'
-             f'\t\tb. {await gen.gen_sentence()}\n'
-             f'\t\tc. {await gen.gen_sentence()}\n'
-             f'\t4. Чем разбавим текст: {await gen.gen_sentence()}\n'
-             f'\t5. Какие триггеры будем использовать: {await gen.gen_sentence()}\n'
-             f'\t6. Каким призывом закроем пост: {await gen.gen_sentence()}\n\n'
+             f'{structure}'
              'Если ты согласен - то просто ответь на следующий вопрос:\n'
              '\t - Смотри, для создания текста мне понадобиться какая-то твоя личная история, расскажи о том, '
-             'о какой-нибудь интересной истории, которая приключилась с тобой в последнее время (можно буквально в 3х '
+             'о какой-нибудь интересной истории, которая приключилась с тобой в последнее время (можно буквально '
+             'в 3х '
              'предложениях).\n\n'
              'Если не согласен со структурой - то просто скажи что тебе не понравилось и я переделаю)\n\n'
              '____\n'
@@ -321,6 +345,8 @@ async def process_idea(message: Message,
 '''
 хэндлер ловит невалидные сообщения идей постов
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_idea))
 async def process_no_idea(message: Message):
     print(f"Ловим юзера {message.from_user.id} на невалидных данных IDEA")
@@ -343,22 +369,24 @@ async def process_idea_offer(callback: CallbackQuery):
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.agree_btn], [kb.disagree_btn]]
     )
+    structure = f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n' \
+                f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n' \
+                f'\t3. Какие приемы будем использовать:\n' \
+                f'\t\ta. {await gen.gen_sentence()}\n' \
+                f'\t\tb. {await gen.gen_sentence()}\n' \
+                f'\t\tc. {await gen.gen_sentence()}\n' \
+                f'\t4. Чем разбавим текст: {await gen.gen_sentence()}\n' \
+                f'\t5. Какие триггеры будем использовать: {await gen.gen_sentence()}\n' \
+                f'\t6. Каким призывом закроем пост: {await gen.gen_sentence()}\n\n'
+    await AsyncORM.add_structure(user_id=user_id, structure=structure)
     if not callback.message.text.startswith('Смотри, вот') or not callback.message.text.startswith('Окей, у тебя'):
         await callback.message.edit_text(
             text='Смотри, вот такой пост нам точно подойдет:\n\n'
-                 f'\t1. Тема: {await AsyncORM.get_topic(user_id)}\n'
-                 f'\t2. Цель нашего поста: {await AsyncORM.get_type_post(user_id)}\n'
-                 f'\t3. Какие приемы будем использовать:\n'
-                 f'\t\ta. {await gen.gen_sentence()}\n'
-                 f'\t\tb. {await gen.gen_sentence()}\n'
-                 f'\t\tc. {await gen.gen_sentence()}\n'
-                 f'\t4. Чем разбавим текст: {await gen.gen_sentence()}\n'
-                 f'\t5. Какие триггеры будем использовать: {await gen.gen_sentence()}\n'
-                 f'\t6. Каким призывом закроем пост: {await gen.gen_sentence()}\n\n'
+                 f'{structure}'
                  'Если ты согласен - то просто ответь на следующий вопрос:\n'
                  '\t - Смотри, для создания текста мне понадобиться какая-то твоя личная история, расскажи о том, '
                  'о какой-нибудь интересной истории, которая приключилась с тобой в последнее время (можно буквально '
-                 'в 3х'
+                 'в 3х '
                  'предложениях).\n\n'
                  'Если не согласен со структурой - то просто скажи что тебе не понравилось и я переделаю)\n\n'
                  '____\n'
@@ -385,6 +413,8 @@ async def process_idea_offer(callback: CallbackQuery, state: FSMContext):
 хэндлер обработки состояния историю пользователя
 НЕТУ ОБРАБОТКИ ГС
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_history), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
                        state: FSMContext):
@@ -398,18 +428,69 @@ async def process_idea(message: Message,
     1. Используя функцию, генерируем пост с помощью GPT.
     2. Записываем пост в БД
     '''
+    user_data = await AsyncORM.get_user_data(user_id)
+    structure = user_data['structure']
+    product = user_data['product']
+    idea = user_data['idea']
+    history = user_data['history']
+    post = user_data['post']
+    if post == 'no' and idea == 'no':
+        promt = 'Сгенерируй пост.\n\n' \
+                'Вот такая структура должна быть у поста:\n' \
+                f'{structure}\n' \
+                'Также учти, что у меня есть свой продукт, вот его короткое описание:\n' \
+                f'{product}\n\n' \
+                'Моя личная история, которая приключилась со мной в последнее время :\n' \
+                f'{history}'
+    elif post == 'no' and idea != 'no':
+        promt = 'Сгенерируй пост.\n\n' \
+                'Вот такая структура должна быть у поста:\n' \
+                f'{structure}\n' \
+                'Также учти, что у меня есть свой продукт, вот его короткое описание:\n' \
+                f'{product}\n\n' \
+                'У меня есть идея для поста, вот ее короткое описание:\n' \
+                f'{idea}\n\n' \
+                'Моя личная история, которая приключилась со мной в последнее время :\n' \
+                f'{history}'
+    elif post != 'no' and idea == 'no':
+        promt = 'Сгенерируй пост.\n\n' \
+                'Вот такая структура должна быть у поста:\n' \
+                f'{structure}\n' \
+                'Также учти, что у меня есть свой продукт, вот его короткое описание:\n' \
+                f'{product}\n\n' \
+                'Моя личная история, которая приключилась со мной в последнее время :\n' \
+                f'{history}\n\n' \
+                'Также мои предыдущие посты :\n' \
+                f'{post}'
+    else:
+        promt = 'Сгенерируй пост.\n\n' \
+                'Вот такая структура должна быть у поста:\n' \
+                f'{structure}\n' \
+                'Также учти, что у меня есть свой продукт, вот его короткое описание:\n' \
+                f'{product}\n\n' \
+                'У меня есть идея для поста, вот ее короткое описание:\n' \
+                f'{idea}\n\n' \
+                'Моя личная история, которая приключилась со мной в последнее время :\n' \
+                f'{history}\n\n' \
+                'Также мои предыдущие посты :\n' \
+                f'{post}' \
+
+
     await AsyncORM.add_gen_post(user_id, 'post body')
     await message.answer(
         text='Смотри какой пост у нас получился:\n\n'
-             f'...\n\n'
+             f'{promt}\n\n'
              'Оценку поста :)',
         reply_markup=kb.get_kb_rate()
     )
     await state.clear()
 
+
 '''
 хэндлер ловит невалидные сообщения идей постов
 '''
+
+
 @router.message(StateFilter(FSMFillForm.upload_history))
 async def process_no_idea(message: Message):
     print(f"Ловим юзера {message.from_user.id} на невалидных данных HISTORY")
@@ -442,7 +523,6 @@ async def user_blocked_bot(event: ChatMemberUpdated):
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
     await AsyncORM.add_flag_active(event.from_user.id, True)
-
 
 # @router.callback_query(kb.PaymentCallbackFactory.filter(F.choice == "payment"))
 # async def confirm(callback: CallbackQuery, callback_data: kb.PaymentCallbackFactory):

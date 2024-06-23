@@ -185,5 +185,50 @@ class AsyncORM:
                 select(CriteriaData.criteria_data).select_from(CriteriaData).filter_by(criteria_id=criteria_id)
             )
             criteria_data = await session.execute(query)
-            criteria_data = criteria_data.all()[criteria_data_number-1][0]
+            criteria_data = criteria_data.all()[criteria_data_number - 1][0]
             return criteria_data
+
+    @staticmethod
+    async def add_structure(user_id: int, structure: str):
+        async with async_session_factory() as session:
+            stmt = text("UPDATE users SET structure=:new_structure WHERE user_id=:id").bindparams(
+                new_structure=structure,
+                id=user_id
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+    @staticmethod
+    async def get_user_data(user_id: int) -> list:
+        async with async_session_factory() as session:
+            user = (
+                select('*').select_from(Users).filter_by(user_id=user_id)
+            )
+            user_res = await session.execute(user)
+            user_res = user_res.all()
+            user_data = (
+                select('*').select_from(UsersPosts).filter_by(user_id=user_id)
+            )
+            user_data_res = await session.execute(user_data)
+            user_data_res = user_data_res.all()
+            result_dic = {}
+            if user_data_res:
+                result_dic = {
+                    'product': user_res[0][5],
+                    'structure': user_res[0][8],
+                    'history': user_res[0][9],
+                    'idea': user_res[0][7],
+                    'post': user_data_res[0][2]
+                }
+            else:
+                result_dic = {
+                    'product': user_res[0][5],
+                    'structure': user_res[0][8],
+                    'history': user_res[0][9],
+                    'idea': user_res[0][7],
+                    'post': 'no'
+                }
+
+            return result_dic
+
+            # return result_dic

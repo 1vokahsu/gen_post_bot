@@ -18,6 +18,7 @@ class Users(Base):
     product: Mapped[Optional[str]]
     type_post: Mapped[Optional[str]]
     idea: Mapped[Optional[str]]
+    structure: Mapped[Optional[str]] = mapped_column(sa.Text)
     history: Mapped[Optional[str]] = mapped_column(sa.Text)
     has_active: Mapped[Optional[bool]]
     created_date: Mapped[datetime.datetime] = mapped_column(
