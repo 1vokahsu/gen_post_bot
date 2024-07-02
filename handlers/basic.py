@@ -1,4 +1,5 @@
-import random
+import datetime
+
 import gen_scripts as gen
 from aiogram import F, Router, Bot
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, ChatMemberUpdated
@@ -7,6 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from keyboards import kb
 from database.queries import AsyncORM
+from voice_handler import voice_trans
 
 router: Router = Router()
 
@@ -20,11 +22,7 @@ class FSMFillForm(StatesGroup):
     upload_history = State()
 
 
-'''
-хэндлер обработки /start
-'''
-
-
+# хэндлер обработки /start
 @router.message(CommandStart())
 async def process_start_command(message: Message, state: FSMContext):
     print(f"[INFO] Юзер {message.from_user.id} нажал /start ")
@@ -45,22 +43,37 @@ async def process_start_command(message: Message, state: FSMContext):
     await state.set_state(FSMFillForm.upload_topic)
 
 
-'''
-хэндлер обработки состояния для обработки темы поста
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния для обработки темы поста
 @router.message(StateFilter(FSMFillForm.upload_topic), lambda x: x.text or x.voice)
 async def process_topic(message: Message,
-                        state: FSMContext
+                        state: FSMContext,
+                        bot: Bot
                         ):
-    print(f'[INFO] state topic check TOPIC')
+    print(f'{datetime.datetime.now()} - [INFO] state topic check TOPIC')
     user_id = message.from_user.id
-    topic = message.text
-    print(f'[INFO] text {topic} from {user_id}')
-    await AsyncORM.add_topic(user_id, topic)
-    print(f'[INFO] write data to db')
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        topic = await voice_trans(file_name)
+        if topic is not None:
+            print(f'{datetime.datetime.now()} - [OK] topic exist')
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+            await AsyncORM.add_topic(user_id, topic)
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] topic not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        topic = message.text
+        print(f'{datetime.datetime.now()} - [INFO] text {topic} from {user_id}')
+        await AsyncORM.add_topic(user_id, topic)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
+
     await message.answer(
         text='Круто!\n'
              'Давай продолжим?\n\n'
@@ -81,7 +94,7 @@ async def process_topic(message: Message,
 
 @router.message(StateFilter(FSMFillForm.upload_topic))
 async def process_no_topic(message: Message):
-    print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных TOPIC")
+    print(f"{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных TOPIC")
     await message.answer(
         text='То, что ты отправил, не похоже на тематику блога.\n\n'
              'Какая тематика твоего блога -  чем ты рассказываешь в своем блоге?\n'
@@ -100,14 +113,36 @@ async def process_no_topic(message: Message):
 
 @router.message(StateFilter(FSMFillForm.upload_target), lambda x: x.text or x.voice)
 async def process_target(message: Message,
-                         state: FSMContext
+                         state: FSMContext,
+                         bot: Bot
                          ):
-    print(f'[INFO] state target check TARGET')
+    print(f'{datetime.datetime.now()} - [INFO] state target check TARGET')
     user_id = message.from_user.id
-    target = message.text
-    print(f'[INFO] text {target} from {user_id}')
-    await AsyncORM.add_target(user_id, target)
-    print(f'[INFO] write data to db')
+
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        target = await voice_trans(file_name)
+        if target is not None:
+            print(f'{datetime.datetime.now()} - [OK] target exist')
+            print(f'{datetime.datetime.now()} - [INFO] text {target} from {user_id}')
+            await AsyncORM.add_target(user_id, target)
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] target not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        target = message.text
+        print(f'{datetime.datetime.now()} - [INFO] text {target} from {user_id}')
+        await AsyncORM.add_target(user_id, target)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
+
     await message.answer(
         text='Последний вопрос 🙂\n'
              'Продаешь ли ты какие либо продукты в своем блоге?\n\n'
@@ -128,7 +163,7 @@ async def process_target(message: Message,
 
 @router.message(StateFilter(FSMFillForm.upload_target))
 async def process_no_target(message: Message):
-    print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных TARGET")
+    print(f'{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных TARGET')
     await message.answer(
         text='То, что ты отправил, не похоже на целевую аудиторию твоего блога.\n\n'
              'Можешь просто своими словами описать её.\n\n'
@@ -147,13 +182,35 @@ async def process_no_target(message: Message):
 
 @router.message(StateFilter(FSMFillForm.upload_product), lambda x: x.text or x.voice)
 async def process_product(message: Message,
-                          state: FSMContext):
-    print(f'[INFO] state target check PRODUCT')
+                          state: FSMContext,
+                          bot: Bot):
+    print(f'{datetime.datetime.now()} - [INFO] state target check PRODUCT')
     user_id = message.from_user.id
-    product = message.text
-    print(f'[INFO] product {product} from {user_id}')
-    await AsyncORM.add_product(user_id, product)
-    print(f'[INFO] write data to db')
+
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        product = await voice_trans(file_name)
+        if product is not None:
+            print(f'{datetime.datetime.now()} - [OK] product exist')
+            print(f'{datetime.datetime.now()} - [INFO] product {product} from {user_id}')
+            await AsyncORM.add_product(user_id, product)
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] product not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        product = message.text
+        print(f'{datetime.datetime.now()} - [INFO] product {product} from {user_id}')
+        await AsyncORM.add_product(user_id, product)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
+
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.skip_btn]]
     )
@@ -173,7 +230,7 @@ async def process_product(message: Message,
 
 @router.message(StateFilter(FSMFillForm.upload_product))
 async def process_no_product(message: Message):
-    print(f"[INFO] Ловим юзера {message.from_user.id} на невалидных данных PRODUCT")
+    print(f'{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных PRODUCT')
     await message.answer(
         text='То, что ты отправил, не совсем тот ответ, которого я ожидал.\n'
              'Давай попробуем еще раз.\n\n'
@@ -195,13 +252,36 @@ async def process_no_product(message: Message):
 
 @router.message(StateFilter(FSMFillForm.upload_posts), lambda x: x.text or x.voice)
 async def process_posts(message: Message,
-                        state: FSMContext, bot: Bot):
-    print(f'[INFO] state target check POSTS')
+                        state: FSMContext,
+                        bot: Bot):
+
+    print(f'{datetime.datetime.now()} - [INFO] state target check POSTS')
     user_id = message.from_user.id
-    posts = message.text
-    print(f'[INFO] posts {posts} from {user_id}')
-    await AsyncORM.add_post(user_id, posts)
-    print(f'[INFO] write data to db')
+
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        posts = await voice_trans(file_name)
+        if posts is not None:
+            print(f'{datetime.datetime.now()} - [OK] posts exist')
+            print(f'{datetime.datetime.now()} - [INFO] posts {posts} from {user_id}')
+            await AsyncORM.add_post(user_id, posts)
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] posts not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        posts = message.text
+        print(f'{datetime.datetime.now()} - [INFO] posts {posts} from {user_id}')
+        await AsyncORM.add_post(user_id, posts)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
+
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.continue_btn]]
@@ -213,14 +293,10 @@ async def process_posts(message: Message,
     await state.set_state(FSMFillForm.upload_posts)
 
 
-'''
-хэндлер ловит невалидные сообщения про наличие постов у пользователя
-'''
-
-
+# хэндлер ловит невалидные сообщения про наличие постов у пользователя
 @router.message(StateFilter(FSMFillForm.upload_posts))
 async def process_no_posts(message: Message):
-    print(f"Ловим юзера {message.from_user.id} на невалидных данных POSTS")
+    print(f'{datetime.datetime.now()} - Ловим юзера {message.from_user.id} на невалидных данных POSTS')
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.skip_btn]]
     )
@@ -232,10 +308,11 @@ async def process_no_posts(message: Message):
     )
 
 
+# хэндлер обработки кнопок "пропустить" или "продолжить"
 @router.callback_query(F.data == "skip")
 async def process_skip(callback: CallbackQuery, state: FSMContext):
-    print(f"[INFO] Юзер {callback.from_user.id} нажал на кнопку \"пропустить\" или \"продолжить\"")
-    print("[INFO] Чистим состояние")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {callback.from_user.id} нажал на кнопку \"пропустить\" или \"продолжить\"')
+    print(f'{datetime.datetime.now()} - [INFO] Чистим состояние')
     await state.clear()
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.seller_btn], [kb.engaging_btn]]
@@ -255,15 +332,16 @@ async def process_skip(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+# хэндлер обработки кнопок "Продающий" или "Вовлекающий"
 @router.callback_query(F.data.in_(['seller', 'engaging']))
 async def process_skip(callback: CallbackQuery):
     user_id = callback.from_user.id
-    print(f"[INFO] Юзер {user_id} нажал на кнопку \"Продающий\" или \"Вовлекающий\"")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {user_id} нажал на кнопку \"Продающий\" или \"Вовлекающий\"')
     if callback.data == 'seller':
         type_post = 'Продающий'
     else:
         type_post = 'Вовлекающий'
-    print(f"[INFO] write {type_post} to db")
+    print(f'{datetime.datetime.now()} - [INFO] write {type_post} to db')
     await AsyncORM.add_type_post(user_id, type_post)
     kb_ = InlineKeyboardMarkup(
         inline_keyboard=[[kb.say_btn], [kb.offer_btn]]
@@ -277,11 +355,12 @@ async def process_skip(callback: CallbackQuery):
     await callback.answer()
 
 
+# хэндлер обработки кнопки "Мне есть что сказать"
 @router.callback_query(F.data == 'say')
 async def process_idea_yes(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    print(f"[INFO] Юзер {user_id} нажал на кнопку “Мне есть что сказать”")
-    print(f"[INFO] set state upload idea")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {user_id} нажал на кнопку “Мне есть что сказать”')
+    print(f'{datetime.datetime.now()} - [INFO] set state upload idea')
     await state.set_state(FSMFillForm.upload_idea)
     if callback.message.text != 'Окей, у тебя уже есть задумка по теме этого поста?\n' \
                                 'Опиши или надиктуй мне её.\n\n' \
@@ -303,13 +382,35 @@ async def process_idea_yes(callback: CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(FSMFillForm.upload_idea), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
-                       state: FSMContext):
-    print(f'[INFO] state target check IDEA')
+                       state: FSMContext,
+                       bot: Bot):
+
+    print(f'{datetime.datetime.now()} - [INFO] state target check IDEA')
     user_id = message.from_user.id
-    idea = message.text
-    print(f'[INFO] idea {idea} from {user_id}')
-    await AsyncORM.add_idea(user_id, idea)
-    print(f'[INFO] write data to db')
+
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        idea = await voice_trans(file_name)
+        if idea is not None:
+            print(f'{datetime.datetime.now()} - [OK] idea exist')
+            print(f'{datetime.datetime.now()} - [INFO] idea {idea} from {user_id}')
+            await AsyncORM.add_idea(user_id, idea)
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] idea not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        idea = message.text
+        print(f'{datetime.datetime.now()} - [INFO] idea {idea} from {user_id}')
+        await AsyncORM.add_idea(user_id, idea)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
     '''
         алгоритм для подбора структуры постов
     '''
@@ -342,14 +443,10 @@ async def process_idea(message: Message,
     await state.clear()
 
 
-'''
-хэндлер ловит невалидные сообщения идей постов
-'''
-
-
+# хэндлер ловит невалидные сообщения идей постов
 @router.message(StateFilter(FSMFillForm.upload_idea))
 async def process_no_idea(message: Message):
-    print(f"Ловим юзера {message.from_user.id} на невалидных данных IDEA")
+    print(f'{datetime.datetime.now()} - Ловим юзера {message.from_user.id} на невалидных данных IDEA')
     await message.answer(
         text='Пожалуйста, опиши или надиктуй мне её.\n\n'
              '____\n'
@@ -357,12 +454,13 @@ async def process_no_idea(message: Message):
     )
 
 
+# хэндлер обработки кнопок "Нет, предложи” или "Не согласен"
 @router.callback_query(F.data.in_(['offer', 'disagree']))
 async def process_idea_offer(callback: CallbackQuery):
     user_id = callback.from_user.id
-    print(f"[INFO] Юзер {user_id} нажал на кнопку “Нет, предложи” или \"Не согласен\"")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {user_id} нажал на кнопку “Нет, предложи” или \"Не согласен\"')
     await AsyncORM.add_idea(user_id, 'no')
-    print(f"[INFO] write idea NO to db")
+    print(f'{datetime.datetime.now()} - [INFO] write idea NO to db')
     '''
     из функции с алгоритмом для подбора структуры постов достаем структуру
     '''
@@ -396,10 +494,11 @@ async def process_idea_offer(callback: CallbackQuery):
     await callback.answer()
 
 
+# хэндлер обработки кнопок "Согласен”
 @router.callback_query(F.data == 'agree')
 async def process_idea_offer(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    print(f"[INFO] Юзер {user_id} нажал на кнопку “Согласен”")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {user_id} нажал на кнопку “Согласен”')
     await callback.message.edit_text(
         text='Супер!\nВнимательно слушаю вашу историю\n\n'
              '____\n'
@@ -417,13 +516,36 @@ async def process_idea_offer(callback: CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(FSMFillForm.upload_history), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
-                       state: FSMContext):
-    print(f'[INFO] state target check HISTORY')
+                       state: FSMContext,
+                       bot: Bot):
+
+    print(f'{datetime.datetime.now()} - [INFO] state target check HISTORY')
     user_id = message.from_user.id
-    history = message.text
-    print(f'[INFO] history {history} from {user_id}')
-    await AsyncORM.add_history(user_id, history)
-    print(f'[INFO] write data to db')
+
+    if message.voice:
+        print(f'{datetime.datetime.now()} - [INFO] collecting voice data')
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        print(f'{datetime.datetime.now()} - [INFO] download voice data')
+        file_name = f"./data/audio_{file_id}.mp3"
+        await bot.download_file(file_path, file_name)
+        print(f'{datetime.datetime.now()} - [INFO] voice transcriptions')
+        history = await voice_trans(file_name)
+        if history is not None:
+            print(f'{datetime.datetime.now()} - [OK] history exist')
+            print(f'{datetime.datetime.now()} - [INFO] history {history} from {user_id}')
+            await AsyncORM.add_history(user_id, history)
+            print(f'{datetime.datetime.now()} - [INFO] write data to db')
+        else:
+            print(f'{datetime.datetime.now()} - [ERROR] history not exist')
+    else:
+        print(f'{datetime.datetime.now()} - [INFO] collecting text data')
+        history = message.text
+        print(f'{datetime.datetime.now()} - [INFO] history {history} from {user_id}')
+        await AsyncORM.add_history(user_id, history)
+        print(f'{datetime.datetime.now()} - [INFO] write data to db')
+
     '''
     1. Используя функцию, генерируем пост с помощью GPT.
     2. Записываем пост в БД
@@ -475,7 +597,6 @@ async def process_idea(message: Message,
                 'Также мои предыдущие посты :\n' \
                 f'{post}' \
 
-
     await AsyncORM.add_gen_post(user_id, 'post body')
     await message.answer(
         text='Смотри какой пост у нас получился:\n\n'
@@ -486,14 +607,10 @@ async def process_idea(message: Message,
     await state.clear()
 
 
-'''
-хэндлер ловит невалидные сообщения идей постов
-'''
-
-
+# хэндлер ловит невалидные сообщения идей постов
 @router.message(StateFilter(FSMFillForm.upload_history))
 async def process_no_idea(message: Message):
-    print(f"Ловим юзера {message.from_user.id} на невалидных данных HISTORY")
+    print(f'{datetime.datetime.now()} - Ловим юзера {message.from_user.id} на невалидных данных HISTORY')
     await message.answer(
         text='Я очень внимательно слушаю вашу историю.\n\n'
              '____\n'
@@ -501,13 +618,14 @@ async def process_no_idea(message: Message):
     )
 
 
+# хэндлер кнопок оценки
 @router.callback_query(F.data.in_(['1', '2', '3', '4', '5']))
 async def process_idea_offer(callback: CallbackQuery):
     user_id = callback.from_user.id
-    print(f"[INFO] Юзер {user_id} нажал на кнопку оценки")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {user_id} нажал на кнопку оценки')
     rate = callback.data
     await AsyncORM.add_rate(user_id, rate)
-    print(f"[INFO] write rate {rate} to db")
+    print(f'{datetime.datetime.now()} - [INFO] write rate {rate} to db')
     await callback.message.edit_text(
         text='Огонь, правда?\n\n'
              f'...\n\n'
@@ -515,11 +633,13 @@ async def process_idea_offer(callback: CallbackQuery):
     await callback.answer()
 
 
+# хэндлер ловящий если пользователь кикнул бота
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
 async def user_blocked_bot(event: ChatMemberUpdated):
     await AsyncORM.add_flag_active(event.from_user.id, False)
 
 
+# хэндлер ловящий если пользователь зашел в бота
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
     await AsyncORM.add_flag_active(event.from_user.id, True)

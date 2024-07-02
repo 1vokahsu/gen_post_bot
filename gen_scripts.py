@@ -2,8 +2,13 @@ import asyncio
 import csv
 import datetime
 import random
-
+import openai
+from config.config import config
 from database.queries import AsyncORM
+
+
+def gen_post(prompt: str)-> str:
+    openai.api_key = config.api_key
 
 
 # функция записи в БД критериев и генерация списка критериев
