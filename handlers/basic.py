@@ -25,7 +25,7 @@ class FSMFillForm(StatesGroup):
 # хэндлер обработки /start
 @router.message(CommandStart())
 async def process_start_command(message: Message, state: FSMContext):
-    print(f"[INFO] Юзер {message.from_user.id} нажал /start ")
+    print(f'{datetime.datetime.now()} - [INFO] Юзер {message.from_user.id} нажал /start ')
     await message.answer(
         text='Привет!\n'
              'Давай начнем - расскажи немного о себе.\n'
@@ -37,9 +37,9 @@ async def process_start_command(message: Message, state: FSMContext):
              '____\n'
              '<i>Кстати, ты можешь использовать голосовые сообщения для ответа.</i>'
     )
-    print(f"[INFO] Добавляем user_id {message.from_user.id} в бд")
+    print(f'{datetime.datetime.now()} - [INFO] Добавляем user_id {message.from_user.id} в бд')
     await AsyncORM.add_user_id(message.from_user.id, message.from_user.username)
-    print(f"[INFO] set state for {message.from_user.id}")
+    print(f'{datetime.datetime.now()} - [INFO] set state for {message.from_user.id}')
     await state.set_state(FSMFillForm.upload_topic)
 
 
@@ -87,11 +87,7 @@ async def process_topic(message: Message,
     await state.set_state(FSMFillForm.upload_target)
 
 
-'''
-хэндлер ловит невалидные сообщения темы поста
-'''
-
-
+# хэндлер ловит невалидные сообщения темы поста
 @router.message(StateFilter(FSMFillForm.upload_topic))
 async def process_no_topic(message: Message):
     print(f"{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных TOPIC")
@@ -105,12 +101,7 @@ async def process_no_topic(message: Message):
     )
 
 
-'''
-хэндлер обработки состояния для обработки целевой аудитории
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния для обработки целевой аудитории
 @router.message(StateFilter(FSMFillForm.upload_target), lambda x: x.text or x.voice)
 async def process_target(message: Message,
                          state: FSMContext,
@@ -156,11 +147,7 @@ async def process_target(message: Message,
     await state.set_state(FSMFillForm.upload_product)
 
 
-'''
-хэндлер невалидные сообщения целевой аудитории
-'''
-
-
+# хэндлер невалидные сообщения целевой аудитории
 @router.message(StateFilter(FSMFillForm.upload_target))
 async def process_no_target(message: Message):
     print(f'{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных TARGET')
@@ -174,12 +161,7 @@ async def process_no_target(message: Message):
     )
 
 
-'''
-хэндлер обработки состояния для обработки наличия продукта у пользователя
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния для обработки наличия продукта у пользователя
 @router.message(StateFilter(FSMFillForm.upload_product), lambda x: x.text or x.voice)
 async def process_product(message: Message,
                           state: FSMContext,
@@ -223,11 +205,7 @@ async def process_product(message: Message,
     await state.set_state(FSMFillForm.upload_posts)
 
 
-'''
-хэндлер ловит невалидные сообщения про наличие продукта у пользователя
-'''
-
-
+# хэндлер ловит невалидные сообщения про наличие продукта у пользователя
 @router.message(StateFilter(FSMFillForm.upload_product))
 async def process_no_product(message: Message):
     print(f'{datetime.datetime.now()} - [INFO] Ловим юзера {message.from_user.id} на невалидных данных PRODUCT')
@@ -244,12 +222,7 @@ async def process_no_product(message: Message):
     )
 
 
-'''
-хэндлер обработки состояния наличия предыдущих постов у пользователя
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния наличия предыдущих постов у пользователя
 @router.message(StateFilter(FSMFillForm.upload_posts), lambda x: x.text or x.voice)
 async def process_posts(message: Message,
                         state: FSMContext,
@@ -374,12 +347,7 @@ async def process_idea_yes(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-'''
-хэндлер обработки состояния идеи постов пользователя
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния идеи постов пользователя
 @router.message(StateFilter(FSMFillForm.upload_idea), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
                        state: FSMContext,
@@ -508,12 +476,7 @@ async def process_idea_offer(callback: CallbackQuery, state: FSMContext):
     await state.set_state(FSMFillForm.upload_history)
 
 
-'''
-хэндлер обработки состояния историю пользователя
-НЕТУ ОБРАБОТКИ ГС
-'''
-
-
+# хэндлер обработки состояния историю пользователя
 @router.message(StateFilter(FSMFillForm.upload_history), lambda x: x.text or x.voice)
 async def process_idea(message: Message,
                        state: FSMContext,
