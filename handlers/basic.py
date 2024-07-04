@@ -1,5 +1,4 @@
 import datetime
-
 import gen_scripts as gen
 from aiogram import F, Router, Bot
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, ChatMemberUpdated
