@@ -5,7 +5,6 @@ from pydantic import SecretStr
 class Settings(BaseSettings):
     bot_token: SecretStr
     payments_token: SecretStr
-    api_key: SecretStr
     DB_HOST: str
     DB_PORT: int
     DB_USER: str

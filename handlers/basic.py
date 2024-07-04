@@ -1,5 +1,5 @@
 import datetime
-import gen_scripts as gen
+from helpers import gen_scripts as gen
 from aiogram import F, Router, Bot
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, ChatMemberUpdated
 from aiogram.filters import CommandStart, StateFilter, ChatMemberUpdatedFilter, KICKED, MEMBER
@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from keyboards import kb
 from database.queries import AsyncORM
-from voice_handler import voice_trans
+from helpers.voice_handler import voice_trans
 
 router: Router = Router()
 

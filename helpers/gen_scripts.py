@@ -43,7 +43,7 @@ async def gen_sentence() -> str:
 
 async def main():
     await AsyncORM.create_tables()
-    await add_criteria_data(file_criteria='data/criteria.csv', file_criteria_data='')
+    await add_criteria_data(file_criteria='../data/criteria.csv', file_criteria_data='')
     # print(await AsyncORM.get_criteria_data(1, 5))
     # user_data = await AsyncORM.get_user_data(701275421)
     # print(user_data)
